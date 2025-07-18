@@ -42,6 +42,9 @@ namespace AutoPurchaseWitchHat
 
         void Update()
         {
+            if (GorillaLocomotion.GTPlayer.Instance == null)
+                return;
+
             if (!GorillaComputer.instance.isConnectedToMaster)
                 lastPurchaseTime = Time.time + 5f;
 
