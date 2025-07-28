@@ -52,13 +52,13 @@ namespace AutoPurchaseWitchHat
         {
             if (GorillaLocomotion.GTPlayer.Instance == null)
                 return;
-
-            if (ownsThing == 1 &&  Time.time > lastPurchaseTime && GorillaComputer.instance.isConnectedToMaster)
-                Check();
         }
 
         public static void Check()
         {
+            if (ownsThing != 1)
+                return;
+
             if (!redeemed)
             {
                 redeemed = true;
