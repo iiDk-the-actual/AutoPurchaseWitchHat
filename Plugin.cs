@@ -14,10 +14,12 @@ namespace AutoPurchaseWitchHat
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
-        float lastPurchaseTime = 0f;
-        bool redeemed = false;
+        static float lastPurchaseTime = 0f;
+        static bool redeemed = false;
+        public static int ownsThing = 0;
+        static Plugin instance;
 
-        IEnumerator RedeemShinyRocks()
+        static IEnumerator RedeemShinyRocks()
         {
             Task<GetPlayerData_Data> newSessionDataTask = KIDManager.TryGetPlayerData(true);
 
@@ -40,38 +42,49 @@ namespace AutoPurchaseWitchHat
             }
         }
 
+        void Awake()
+        {
+            instance = this;
+            HarmonyPatches.ApplyHarmonyPatches();
+        }
+
         void Update()
         {
             if (GorillaLocomotion.GTPlayer.Instance == null)
                 return;
 
-            if (!GorillaComputer.instance.isConnectedToMaster)
-                lastPurchaseTime = Time.time + 5f;
+            if (ownsThing == 1 &&  Time.time > lastPurchaseTime && GorillaComputer.instance.isConnectedToMaster)
+                Check();
+        }
 
-            if (Time.time > lastPurchaseTime && GorillaComputer.instance.isConnectedToMaster)
+        public static void Check()
+        {
+            if (!redeemed)
             {
-                if (!redeemed)
-                {
-                    redeemed = true;
-                    StartCoroutine(RedeemShinyRocks());
-                }
+                redeemed = true;
+                instance.StartCoroutine(RedeemShinyRocks());
+            }
 
+            lastPurchaseTime = Time.time + 5f;
+
+            if (CosmeticsController.instance.currencyBalance >= 1500)
+            {
                 lastPurchaseTime = Time.time + 60f;
-
-                if (!VRRig.LocalRig.concatStringOfCosmeticsAllowed.Contains("LHAAJ.") && CosmeticsController.instance.currencyBalance >= 2000)
+                PlayFabClientAPI.PurchaseItem(new PurchaseItemRequest
                 {
-                    PlayFabClientAPI.PurchaseItem(new PurchaseItemRequest
-                    {
-                        ItemId = "LHAAJ.",
-                        Price = 2000,
-                        VirtualCurrency = CosmeticsController.instance.currencyName,
-                        CatalogVersion = CosmeticsController.instance.catalog
-                    }, delegate (PurchaseItemResult result)
-                    {
-                        // iiMenu.Notifications.NotifiLib.SendNotification("I bought the witch hat for you buddy");
-                        CosmeticsController.instance.ProcessExternalUnlock("LHAAJ.", false, false);
-                    }, null, null, null);
-                }
+                    ItemId = "LHAAJ.",
+                    Price = 1500,
+                    VirtualCurrency = CosmeticsController.instance.currencyName,
+                    CatalogVersion = CosmeticsController.instance.catalog
+                }, delegate (PurchaseItemResult result)
+                {
+                    if (result.Items.Count <= 0)
+                        return;
+
+                    ownsThing = 2;
+                    CosmeticsController.instance.ProcessExternalUnlock("LHAAJ.", false, false);
+                    CosmeticsController.instance.GetCurrencyBalance();
+                }, null, null, null);
             }
         }
     }
